@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL=${MODEL:-gpt-5}
+      - MAX_ITER=${MAX_ITER:-3}
+      - MAX_CALLS=${MAX_CALLS:-12}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data:ro

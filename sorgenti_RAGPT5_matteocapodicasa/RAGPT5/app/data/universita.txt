@@ -1,0 +1,45 @@
+[subjects]
+student
+professor
+teaching assistant
+advisor
+department head
+registrar
+researcher
+
+[actions]
+read
+write
+update
+delete
+grade
+enroll
+approve
+access
+export
+
+[resources]
+student record
+grade report
+course roster
+syllabus
+research dataset
+thesis
+timetable
+attendance list
+
+[purposes]
+academic advising
+grading
+enrollment management
+research
+accreditation audit
+course administration
+
+[conditions]
+during office hours
+with student consent
+for enrolled courses only
+on-campus network
+with dean approval
+within term dates

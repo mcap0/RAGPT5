@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAGPT5 – Policy Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+ body {
+   font-family: 'Roboto Mono', monospace;
+   margin: 24px;
+   line-height: 1.4;
+   background: #f8fafc;
+   color: #111;
+ }
+ .row { display: flex; gap: 16px; flex-wrap: wrap }
+ textarea {
+   width: 100%;
+   min-height: 120px;
+   padding: 8px;
+   border-radius: 6px;
+   border: 1px solid #ccc;
+   font-family: 'Roboto Mono', monospace;
+   font-size: 14px;
+ }
+ input[type="text"]{
+   width: 100%;
+   padding: 8px;
+   border-radius: 6px;
+   border: 1px solid #ccc;
+   font-family: 'Roboto Mono', monospace;
+   font-size: 14px;
+ }
+ pre {
+   background: #0b1020;
+   color: #d2e1ff;
+   padding: 12px;
+   border-radius: 8px;
+   overflow-y: auto;
+   max-height: 400px;
+   white-space: pre-wrap;
+   font-family: 'Roboto Mono', monospace;
+   font-size: 13px;
+ }
+ .btn {
+   background: #1d4ed8;
+   color: #fff;
+   border: 0;
+   padding: 10px 14px;
+   border-radius: 8px;
+   cursor: pointer;
+   transition: background 0.2s;
+   font-family: 'Roboto Mono', monospace;
+ }
+ .btn:hover { background: #1e40af; }
+ .btn.stop { background: #dc2626; }
+ .btn.stop:hover { background: #b91c1c; }
+ .pill {
+   display: inline-block;
+   background: #e0e7ff;
+   padding: 6px 10px;
+   border-radius: 999px;
+   margin: 2px;
+   cursor: pointer;
+   transition: background 0.15s;
+ }
+ .pill:hover { background: #c7d2fe; }
+ label { font-weight: 600 }
+ small { color: #333 }
+ .muted { opacity: .8 }
+ .inline { display:inline-flex; align-items:center; gap:8px }
+ .hint { font-size:12px; color:#555 }
+</style>
+</head>
+<body>
+<h2>RAGPT5 – Access Control Policy Generator</h2>
+<p class="muted"><small>Model: <b>{{ model }}</b> · Max iter: {{ max_iter }} · Max calls: {{ max_calls }}</small></p>
+
+<div class="row">
+  <div style="flex:1 1 420px">
+    <label for="text">Frase (NLACP o no)</label><br>
+    <textarea id="text" placeholder="Es. Il professore può aggiornare i grade report..."></textarea>
+    <br><br>
+
+    <label for="environment">Environment (seleziona o scrivi sotto)</label><br>
+    <select id="environment">
+      <option value="universita">universita</option>
+      <option value="softwarehouse">softwarehouse</option>
+    </select>
+    <div class="hint">Se compili il campo qui sotto, verrà usato al posto del menu</div>
+    <input id="environment_custom" type="text" placeholder="Es. ospedale, e-commerce, banca, ecc.">
+    <br><br>
+
+    <div class="inline">
+      <label for="attack">Attack mode</label>
+      <input type="checkbox" id="attack">
+    </div>
+
+    <br><br>
+    <button class="btn" onclick="runStream()">Avvia</button>
+    <button class="btn stop" onclick="stopProcess()">Stop</button>
+    <div style="margin-top:10px">
+      <b>Esempi:</b><br>
+      <span class="pill" onclick="fill('Gli studenti possono leggere i voti solo durante l’orario di ufficio.','universita')">Università</span>
+      <span class="pill" onclick="fill('Il devops può leggere i production logs ma NON può cancellarli.','softwarehouse')">Softwarehouse</span>
+      <span class="pill" onclick="fill('Il professore può aggiornare i grade report per i corsi a cui lo studente è iscritto, ma non può eliminarli.','universita')">Composto</span>
+      <span class="pill" onclick="fill('Il contractor può configurare il pipeline config solo da corporate vpn.','softwarehouse')">Condizionale</span>
+    </div>
+  </div>
+
+  <div style="flex:1 1 420px">
+    <label>Log</label>
+    <pre id="log">pronto.</pre>
+    <label>Output</label>
+    <pre id="out">{}</pre>
+  </div>
+</div>
+
+<script>
+let es = null;
+function fill(t, d){
+  document.getElementById('text').value = t;
+  document.getElementById('environment').value = d;
+  document.getElementById('environment_custom').value = '';
+  runStream();
+}
+
+function resolveEnvironment(){
+  const custom = document.getElementById('environment_custom').value.trim();
+  if (custom) return custom.toLowerCase();
+  return document.getElementById('environment').value;
+}
+
+function runStream(){
+  const text = document.getElementById('text').value;
+  const env = resolveEnvironment();
+  const attack = document.getElementById('attack').checked ? 'true' : 'false';
+  const log = document.getElementById('log');
+  const out = document.getElementById('out');
+
+  if (es) { es.close(); es = null; }
+  log.textContent = '';
+  out.textContent = '{}';
+
+  const url = `/api/log?environment=${encodeURIComponent(env)}&text=${encodeURIComponent(text)}&attack=${attack}`;
+  es = new EventSource(url);
+
+  const t0 = performance.now();
+  function append(obj){
+    const ts = new Date().toISOString();
+    log.textContent += `[${ts}] ${obj}\n`;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  es.addEventListener('log', e => {
+    try {
+      const data = JSON.parse(e.data);
+      append(JSON.stringify(data));
+    } catch(err){
+      append('log event parse error');
+    }
+  });
+
+  es.addEventListener('result', e => {
+    try {
+      const data = JSON.parse(e.data);
+      out.textContent = JSON.stringify(data, null, 2);
+    } catch(err){
+      append('result event parse error');
+    }
+  });
+
+  es.addEventListener('error', e => {
+    append('ERRORE: ' + e.data);
+  });
+
+  es.addEventListener('done', e => {
+    const elapsed = (performance.now() - t0).toFixed(0);
+    append(`done in ${elapsed} ms`);
+    es.close();
+  });
+}
+
+async function stopProcess(){
+  try {
+    await fetch('/api/stop', { method: 'POST' });
+    const log = document.getElementById('log');
+    log.textContent += `\n[${new Date().toISOString()}] processo interrotto manualmente\n`;
+    log.scrollTop = log.scrollHeight;
+    if (es) es.close();
+  } catch (err){
+    alert('Errore nel fermare il processo');
+  }
+}
+</script>
+</body>
+</html>

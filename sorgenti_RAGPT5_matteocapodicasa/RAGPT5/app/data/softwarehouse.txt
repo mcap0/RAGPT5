@@ -1,0 +1,44 @@
+[subjects]
+developer
+qa engineer
+product manager
+devops
+security analyst
+contractor
+intern
+
+[actions]
+read
+write
+update
+delete
+deploy
+approve
+configure
+audit
+access
+
+[resources]
+source code
+build artifact
+production logs
+pipeline config
+secrets vault
+issue tracker
+roadmap
+
+[purposes]
+debugging
+release management
+incident response
+compliance
+code review
+feature planning
+
+[conditions]
+business hours
+on-call window
+with ticket reference
+from corporate vpn
+peer reviewed
+two-person rule
